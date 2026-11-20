@@ -69,3 +69,11 @@ pub mod compat;
 mod test_compat_fixtures;
 #[path = "../../../shared/src/config_audit.rs"]
 pub mod config_audit;
+#[path = "../../../shared/src/upgrade_compat_snapshot.rs"]
+pub mod upgrade_compat_snapshot;
+#[path = "../../../shared/src/event_pagination.rs"]
+pub mod event_pagination;
+#[path = "../../../shared/src/treasury_conservation.rs"]
+pub mod treasury_conservation;
+#[path = "../../../shared/src/auth_fingerprint.rs"]
+pub mod auth_fingerprint;
