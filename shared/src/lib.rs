@@ -119,6 +119,10 @@ pub mod treasury_conservation;
 pub mod auth_fingerprint;
 pub mod telemetry_protection;
 pub mod duplicate_merge_review;
+pub mod nft_guard;
+pub mod recurring_payments;
+pub mod registry_pinning;
+pub mod wasm_determinism;
 #[cfg(test)]
 pub mod test_boundary_properties;
 #[cfg(test)]
@@ -282,4 +286,22 @@ pub use health_guard::{
     breaker_state, check_and_record_attempt, execute_guarded, get_retry_budget,
     is_registered_reporter, register_reporter, report_health_check, reset_breaker,
     revoke_reporter,
+};
+pub use nft_guard::{
+    evaluate_wash_trade, record_clean_trade, verify_floor_price, FloorPriceGuardConfig,
+    FloorPriceState, MarketGuardError, TokenOwnershipHistory, WashTradeConfig, WashTradeVerdict,
+};
+pub use recurring_payments::{
+    create_recurring_authorization, execute_recurring_pull, get_remaining_budgets,
+    pause_recurring_authorization, resume_recurring_authorization, revoke_recurring_authorization,
+    update_spend_ceiling, RecurringPaymentError, RecurringPullAuth, RecurringPullExecutionResult,
+    RecurringPullStatus,
+};
+pub use registry_pinning::{
+    create_deprecation_notice, create_version_pin, resolve_target_version, validate_pin_target,
+    DeprecationNotice, RegistryPinningError, VersionPin,
+};
+pub use wasm_determinism::{
+    evaluate_budget_regression, verify_wasm_determinism, BudgetRegressionVerdict,
+    DeterminismGateError, DeterminismReport, ResourceBudget, WasmArtifactFingerprint,
 };
