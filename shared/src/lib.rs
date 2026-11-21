@@ -106,6 +106,8 @@ pub mod upgrade_compat_snapshot;
 pub mod event_pagination;
 pub mod treasury_conservation;
 pub mod auth_fingerprint;
+pub mod telemetry_protection;
+pub mod duplicate_merge_review;
 #[cfg(test)]
 pub mod test_boundary_properties;
 #[cfg(test)]
@@ -587,3 +589,5 @@ mod test_resumable_repair;
 mod test_init_rollback;
 #[cfg(test)]
 mod test_compat_fixtures;
+#[cfg(test)]
+mod test_telemetry;

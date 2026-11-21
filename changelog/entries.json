@@ -313,5 +313,41 @@
     "migration_notes": "No contract, storage or event change. Off-chain callers of evaluate_runbook (none in this repository) must mark mandatory checks Passed explicitly; a skipped or unfinished mandatory check now yields all_passed = false.",
     "issue": 452,
     "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-21",
+    "impact": "compatible",
+    "summary": "Added four-pillar release readiness checks in shared::release_readiness for migration, security, smoke test, and rollback rehearsal validation (#422).",
+    "migration_notes": "",
+    "issue": 422,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-21",
+    "impact": "compatible",
+    "summary": "Implemented deterministic duplicate detection and merge review in shared::duplicate_merge_review with pre-merge snapshots and auditable state transitions (#427).",
+    "migration_notes": "",
+    "issue": 427,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-21",
+    "impact": "compatible",
+    "summary": "Added high-cardinality telemetry redaction, label bounding, and deterministic sampling with error-bypass guarantees in shared::telemetry_protection (#428).",
+    "migration_notes": "",
+    "issue": 428,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-21",
+    "impact": "compatible",
+    "summary": "Implemented O(1) stale session watermark invalidation, security epochs, and single-token revocation handling in shared::session_revocation (#430).",
+    "migration_notes": "",
+    "issue": 430,
+    "pr": null
   }
 ]

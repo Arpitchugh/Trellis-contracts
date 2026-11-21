@@ -77,3 +77,21 @@ pub mod event_pagination;
 pub mod treasury_conservation;
 #[path = "../../../shared/src/auth_fingerprint.rs"]
 pub mod auth_fingerprint;
+#[path = "../../../shared/src/migration.rs"]
+pub mod migration;
+#[path = "../../../shared/src/telemetry.rs"]
+pub mod telemetry;
+#[path = "../../../shared/src/session_revocation.rs"]
+pub mod session_revocation;
+#[path = "../../../shared/src/telemetry_protection.rs"]
+pub mod telemetry_protection;
+#[cfg(test)]
+#[path = "../../../shared/src/test_telemetry.rs"]
+mod test_telemetry;
+#[path = "../../../shared/src/release_readiness.rs"]
+pub mod release_readiness;
+#[cfg(test)]
+#[path = "../../../shared/src/test_release_readiness.rs"]
+mod test_release_readiness;
+#[path = "../../../shared/src/duplicate_merge_review.rs"]
+pub mod duplicate_merge_review;
