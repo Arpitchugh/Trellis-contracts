@@ -127,6 +127,9 @@ function loadWorstCaseBudgets(filePath) {
     }
     budgets[key] = { cpu_instructions: b.cpu_instructions, memory_bytes: b.memory_bytes };
   }
+  if (Object.keys(budgets).length === 0) {
+    throw new Error("worst-case budget file defines no budget entries (refusing to pass silently)");
+  }
   return budgets;
 }
 

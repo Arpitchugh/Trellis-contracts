@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Soroban CPU/memory footprint profiling runner (Issue #192).
 #
+# NOTE: this script must be committed with the executable bit set
+# (`git update-index --chmod=+x scripts/profile-budget.sh`); CI invokes it as
+# `./scripts/profile-budget.sh` and fails with exit 126 otherwise.
 # Runs the `profile_budget` test module in each profiled contract with
 # `--nocapture`, so the `BUDGET_METRIC <key> cpu=<n> mem=<n>` lines those
 # tests print (see contracts/*/src/profile_budget.rs) land in a combined log.
