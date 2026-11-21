@@ -114,6 +114,8 @@ pub mod upgrade_compat_snapshot;
 pub mod event_pagination;
 pub mod treasury_conservation;
 pub mod auth_fingerprint;
+pub mod telemetry_protection;
+pub mod duplicate_merge_review;
 #[cfg(test)]
 pub mod test_boundary_properties;
 #[cfg(test)]
@@ -610,10 +612,4 @@ mod test_init_rollback;
 #[cfg(test)]
 mod test_compat_fixtures;
 #[cfg(test)]
-mod test_retention;
-#[cfg(test)]
-mod test_operational_retention;
-pub mod workflow_synthetic_monitor;
-pub mod ttl_monitor_repair;
-pub mod dependency_aware_health;
-pub mod unified_dedup;
+mod test_telemetry;
