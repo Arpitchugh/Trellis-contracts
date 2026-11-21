@@ -89,6 +89,7 @@ pub mod sanitize;
 pub mod scan_guard;
 pub mod schema_evolution;
 pub mod semantic;
+pub mod sensitive_boundary;
 pub mod session_invalidation;
 pub mod session_revocation;
 pub mod signed_audit_receipt;
@@ -497,6 +498,17 @@ pub use dry_run_policy::{
     RecordSnapshot, RecordVerdict, MAX_DRY_RUN_RECORDS, TOPIC_DRY_RUN,
 };
 pub use utils::{is_expired, now};
+pub use sensitive_boundary::{
+    assert_no_forbidden_fields, assert_webhook_payload_clean, contains_bidi_controls,
+    contains_executable_markup, contains_path_traversal, contains_template_injection,
+    enforce_export_scope_boundary, has_allowlisted_download_extension,
+    has_dangerous_download_extension, is_export_allowlisted_field, is_forbidden_export_field,
+    is_forbidden_ssrf_destination, sanitize_export_record, sanitize_render_content,
+    validate_download_filename, validate_download_uri, validate_export_chunk_size,
+    validate_render_content, validate_webhook_destination, verify_webhook_ingress_boundary,
+    BoundaryDomain, BoundaryModule, DownloadScheme, SensitiveBoundaryError,
+    BOUNDARY_CHUNK_CEILING, MAX_DOWNLOAD_URI_LEN, MAX_FILENAME_LEN, MAX_RENDER_TEXT_LEN,
+    MAX_WEBHOOK_PAYLOAD_LEN,
 pub use snapshot_restore::{
     clear_quarantine, execute_restore_verification_and_rebuild, get_latest_restore_receipt,
     get_restore_receipt, get_stored_derived_view, is_module_quarantined, rebuild_derived_views,
@@ -581,6 +593,9 @@ mod test_ledger_fixtures;
 // Schema-compatibility tests for versioned domain events (Issue #337).
 #[cfg(test)]
 mod test_domain_events;
+// Sensitive-content boundary tests for rendering, downloads, webhooks, and exports.
+#[cfg(test)]
+mod test_sensitive_boundary;
 // Snapshot restore verification and derived view rebuilding tests.
 #[cfg(test)]
 mod test_snapshot_restore;
