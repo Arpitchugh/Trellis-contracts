@@ -69,6 +69,14 @@ const STRATEGY_POSITION: Symbol = symbol_short!("strat_pos");
 const STRATEGY_TOTAL: Symbol = symbol_short!("strat_tot");
 const STRATEGY_YIELD_CATEGORY: Symbol = symbol_short!("yield");
 const MAX_STRATEGY_ALLOCATION_BPS: u32 = 3_000;
+/// Storage key for the cross-contract reentrancy lock flag.
+const REENTRANCY_LOCK: Symbol = symbol_short!("reent_lk");
+/// Storage key for the current cross-contract call depth.
+const CALL_DEPTH: Symbol = symbol_short!("call_dep");
+/// Storage key for the maximum permitted cross-contract call depth.
+const MAX_CALL_DEPTH: Symbol = symbol_short!("max_dep");
+/// Default maximum cross-contract call depth.
+const DEFAULT_MAX_CALL_DEPTH: u32 = 4;
 
 #[contractclient(name = "ReserveStrategyClient")]
 pub trait ReserveStrategy {
@@ -197,6 +205,45 @@ fn record_treasury_audit(
 
 fn zero_correlation_id(env: &Env) -> BytesN<32> {
     BytesN::from_array(env, &[0; 32])
+}
+
+/// Acquires the cross-contract reentrancy lock and increments call-depth
+/// telemetry. Fails with `Error::InvalidArgument` if the lock is already held
+/// (reentrant call) or the configured maximum depth would be exceeded.
+///
+/// Recovery: callers must pair every successful `enter_guarded` with a
+/// `exit_guarded`. Returning an error before mutation leaves state unchanged,
+/// so a failed entry requires no rollback.
+fn enter_guarded(env: &Env) -> Result<(), Error> {
+    if instance_get::<_, bool>(env, &REENTRANCY_LOCK).unwrap_or(false) {
+        return Err(Error::InvalidArgument);
+    }
+    let depth = instance_get::<_, u32>(env, &CALL_DEPTH).unwrap_or(0);
+    let max_depth =
+        instance_get::<_, u32>(env, &MAX_CALL_DEPTH).unwrap_or(DEFAULT_MAX_CALL_DEPTH);
+    if depth >= max_depth {
+        return Err(Error::InvalidArgument);
+    }
+    instance_set(env, &REENTRANCY_LOCK, &true);
+    instance_set(env, &CALL_DEPTH, &(depth + 1));
+    Ok(())
+}
+
+/// Releases the reentrancy lock and decrements call-depth telemetry.
+fn exit_guarded(env: &Env) {
+    let depth = instance_get::<_, u32>(env, &CALL_DEPTH).unwrap_or(0);
+    instance_set(env, &CALL_DEPTH, &depth.saturating_sub(1));
+    instance_set(env, &REENTRANCY_LOCK, &false);
+}
+
+/// Returns the current cross-contract call depth (telemetry).
+pub fn current_call_depth(env: &Env) -> u32 {
+    instance_get::<_, u32>(env, &CALL_DEPTH).unwrap_or(0)
+}
+
+/// Returns the configured maximum cross-contract call depth.
+pub fn max_call_depth(env: &Env) -> u32 {
+    instance_get::<_, u32>(env, &MAX_CALL_DEPTH).unwrap_or(DEFAULT_MAX_CALL_DEPTH)
 }
 
 #[contract]
