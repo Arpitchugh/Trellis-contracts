@@ -75,7 +75,6 @@ pub fn is_submitter_registered(env: &Env, submitter: &Address) -> bool {
     get_submitters(env).get(submitter.clone()).is_some()
 }
 
-
 /// Count currently active price submitters.
 pub fn active_submitter_count(env: &Env) -> u32 {
     let mut count = 0;
@@ -211,7 +210,7 @@ pub fn get_feed_history(env: &Env, feed_id: &Symbol, limit: u32) -> Vec<PriceSub
 
     if let Some(submissions) = history.get(feed_id.clone()) {
         let len = submissions.len() as u32;
-        let start = if len > limit { (len - limit) as u32 } else { 0 };
+        let start = if len > limit { len - limit } else { 0 };
         let mut result = Vec::new(env);
         let mut i = start;
         while i < submissions.len() {
@@ -339,4 +338,3 @@ pub fn get_treasury(env: &Env) -> Option<Address> {
 pub fn set_treasury(env: &Env, treasury: &Address) {
     env.storage().instance().set(&DataKey::Treasury, treasury);
 }
-
