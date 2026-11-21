@@ -77,3 +77,11 @@ pub mod event_pagination;
 pub mod treasury_conservation;
 #[path = "../../../shared/src/auth_fingerprint.rs"]
 pub mod auth_fingerprint;
+#[path = "../../../shared/src/workflow_synthetic_monitor.rs"]
+pub mod workflow_synthetic_monitor;
+#[path = "../../../shared/src/ttl_monitor_repair.rs"]
+pub mod ttl_monitor_repair;
+#[path = "../../../shared/src/dependency_aware_health.rs"]
+pub mod dependency_aware_health;
+#[path = "../../../shared/src/unified_dedup.rs"]
+pub mod unified_dedup;
