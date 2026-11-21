@@ -367,5 +367,14 @@
     "migration_notes": "",
     "issue": 501,
     "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-21",
+    "impact": "compatible",
+    "summary": "Implemented privacy-safe export with field-level authorization, allow-list filtering, and personal data redaction in shared::export (#502).",
+    "migration_notes": "",
+    "issue": 502,
+    "pr": null
   }
 ]
