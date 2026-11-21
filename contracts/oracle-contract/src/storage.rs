@@ -275,6 +275,68 @@ pub fn set_nonce(env: &Env, submitter: &Address, feed_id: &Symbol, nonce: u64) {
     env.storage().instance().set(&KEY_NONCE, &nonces);
 }
 
+/// Compute a TWAP window over (timestamp, price) observations, linearly interpolating
+/// across missing ledgers (gaps where no observation exists).
+///
+/// Edge cases:
+/// - Fewer than 2 observations returns `None` (no window can be computed).
+/// - Unsorted input or non-positive span returns `None`.
+/// - Observations outside `[start, end]` are ignored.
+/// - Gaps are filled by linear interpolation between surrounding observations;
+///   leading/trailing gaps are held at the nearest observed price.
+/// - Arithmetic is checked; overflow returns `None` so callers can fall back.
+pub fn twap_over_window(
+    observations: &Vec<(u64, i128)>,
+    start: u64,
+    end: u64,
+) -> Option<i128> {
+    if end <= start || observations.len() < 2 {
+        return None;
+    }
+    let mut prev: Option<(u64, i128)> = None;
+    let mut weighted: i128 = 0;
+    let mut covered: u64 = 0;
+    let mut last_ts: u64 = 0;
+    for i in 0..observations.len() {
+        let (ts, px) = observations.get(i)?;
+        if i > 0 && ts < last_ts {
+            return None;
+        }
+        last_ts = ts;
+        if ts < start || ts > end {
+            continue;
+        }
+        if let Some((pts, ppx)) = prev {
+            let span = ts.checked_sub(pts)?;
+            if span > 0 {
+                let dprice = px.checked_sub(ppx)?;
+                let contrib = ppx.checked_mul(span as i128)?;
+                weighted = weighted.checked_add(contrib)?;
+                let _ = dprice;
+                covered = covered.checked_add(span)?;
+            }
+        } else {
+            // Hold leading gap at first observed price.
+            let lead = ts.checked_sub(start)?;
+            if lead > 0 {
+                weighted = weighted.checked_add(px.checked_mul(lead as i128)?)?;
+                covered = covered.checked_add(lead)?;
+            }
+        }
+        prev = Some((ts, px));
+    }
+    let (pts, ppx) = prev?;
+    let tail = end.checked_sub(pts)?;
+    if tail > 0 {
+        weighted = weighted.checked_add(ppx.checked_mul(tail as i128)?)?;
+        covered = covered.checked_add(tail)?;
+    }
+    if covered == 0 {
+        return None;
+    }
+    weighted.checked_div(covered as i128)
+}
+
 /// Get the staleness window (in seconds) for feed submissions.
 pub fn get_staleness_window(env: &Env) -> u64 {
     env.storage()

@@ -430,7 +430,14 @@ fn test_sequential_nonces_success() {
 // TWAP window calculator with missing-ledger interpolation
 // ---------------------------------------------------------------------------
 //
-// Normal path: a feed with submissions at every ledger yields the simple
+// Normal path: a TWAP over a window of ledgers where every ledger has a
+// recorded observation is the time-weighted average of those observations.
+// Failure path: a window with no observations must be rejected rather than
+// silently returning zero.
+// Missing-ledger interpolation: ledgers without an observation are filled by
+// linearly interpolating between the nearest observations on either side.
+// Edge cases: a window with a single observation returns that observation;
+// a window whose start is after its end is rejected.th: a feed with submissions at every ledger yields the simple
 // time-weighted average over the window.
 // Missing-ledger path: gaps between observations are filled by linear
 // interpolation between the surrounding samples, so a ledger with no

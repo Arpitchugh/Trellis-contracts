@@ -1,5 +1,8 @@
 use soroban_sdk::{contracterror, contracttype, Address, Symbol};
 
+extern crate alloc;
+use alloc::vec::Vec;
+
 /// Represents a single price feed submission.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]

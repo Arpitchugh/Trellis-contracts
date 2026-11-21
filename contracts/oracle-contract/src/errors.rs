@@ -19,7 +19,7 @@ use soroban_sdk::contracterror;
 /// # Operational edge cases and failure modes
 ///
 /// - `InternalError` is a catch-all for invariant breaks. It should never be
-///   returned for validatile failures; treat it as an incident signal.
+///   returned for validation failures; treat it as an incident signal.
 /// - `InsufficientQuorum` and `SubmissionStale` are transient: retry after
 ///   additional submissions or a fresh submission window.
 /// - `Unrecoverable` class errors (auth, configuration) require admin action
