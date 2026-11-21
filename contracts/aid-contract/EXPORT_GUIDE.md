@@ -175,6 +175,12 @@ All export operations are **fully idempotent**:
 
 **Recovery:** Ensure storage schema migrations complete before enabling exports. See the migration guide in `UPGRADEABILITY.md`.
 
+### Edge Case 6: One Address Holds Two Roles
+
+**Behavior:** The role is resolved in the order admin, donor, recipient, inspector, and the first match wins. An inspector who is also the recipient of an aid gets the recipient's redacted view of that aid, not the inspector's full view.
+
+**Recovery:** None needed; this keeps the narrower view. To see the full record, export it from an address that is only an inspector, or as the admin.
+
 ## Rollback and Backwards Compatibility
 
 ### Existing Contracts
