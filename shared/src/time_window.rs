@@ -92,6 +92,9 @@ pub fn validate_bid_increment(
     if new_bid <= 0 {
         return Err(AntiSnipeError::BidTooLow);
     }
+    if current_highest < 0 {
+        return Err(AntiSnipeError::Invalid);
+    }
     if current_highest == 0 {
         return Ok(());
     }

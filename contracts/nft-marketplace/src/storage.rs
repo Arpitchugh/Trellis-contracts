@@ -29,6 +29,37 @@ pub struct Auction {
     pub end_time: u64,
 }
 
+pub const MIN_BID_INCREMENT_BPS_FLOOR: u32 = 100;
+pub const MAX_ANTI_SNIPE_EXTENSION: u64 = 3600;
+
+pub fn validate_auction_config(config: &AuctionConfig) -> bool {
+    config.min_bid_increment_bps >= MIN_BID_INCREMENT_BPS_FLOOR
+        && config.min_bid_increment_bps <= 10_000
+        && config.anti_snipe_extension <= MAX_ANTI_SNIPE_EXTENSION
+        && config.anti_snipe_window <= config.anti_snipe_extension.saturating_mul(10)
+}
+
+pub fn apply_anti_snipe(auction: &mut Auction, config: &AuctionConfig, now: u64) -> bool {
+    if auction.end_time.saturating_sub(now) <= config.anti_snipe_window && config.anti_snipe_extension > 0 {
+        auction.end_time = now.saturating_add(config.anti_snipe_extension);
+        true
+    } else {
+        false
+    }
+}
+
+pub fn min_next_bid(auction: &Auction, config: &AuctionConfig) -> Option<i128> {
+    if auction.highest_bid == 0 {
+        return Some(1);
+    }
+    let increment = auction
+        .highest_bid
+        .checked_mul(config.min_bid_increment_bps as i128)?
+        .checked_div(10_000)?;
+    let increment = if increment == 0 { 1 } else { increment };
+    auction.highest_bid.checked_add(increment)
+}
+
 pub struct PendingRefunds;
 
 impl PendingRefunds {
@@ -65,5 +96,11 @@ impl AuctionStore {
 
     pub fn set(env: &Env, collection: &Address, auction_id: u64, auction: &Auction) {
         persistent_set(env, &DataKey::Auction(collection.clone(), auction_id), auction);
+    }
+
+    pub fn remove(env: &Env, collection: &Address, auction_id: u64) {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::Auction(collection.clone(), auction_id));
     }
 }
