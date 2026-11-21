@@ -2,6 +2,27 @@
 //!
 //! Tests that worker pools respect concurrency limits and apply backpressure
 //! to prevent resource exhaustion during concurrent mutations.
+//!
+//! Worst-case load coverage:
+//! - Normal path: work within limits is admitted and completed.
+//! - Failure path: a failing work item releases its slot and budget and is
+//!   recorded as rejected; the queue keeps its non-failing items.
+//! - Retry path: a rejected item can be resubmitted once capacity frees up.
+//! - Authorization path: work whose cost exceeds the budget (or a zero-capacity
+//!   pool) is refused without mutating pool state.
+//! - Saturation: at maximum workers / full budget, all further submissions are
+//!   backpressured and state invariants hold.
+//!
+//! Edge cases and recovery:
+//! - Releasing more workers or cost than were acquired saturates at zero and
+//!   never underflows.
+//! - `release_worker` completes the queue head only when a queue entry exists;
+//!   releases without queued work only restore capacity.
+//! - `process_queue` stops at the first failing work item and returns its error;
+//!   the failed slot is released before returning, so the pool is left in a
+//!   consistent state and processing can be resumed by calling again.
+//! - Budget arithmetic uses saturating/checked operations so that oversized
+//!   costs cannot overflow and bypass backpressure.
 
 use alloc::vec::Vec;
 
@@ -62,21 +83,28 @@ impl BoundedConcurrencyPool {
     /// Check if the pool can accept more work.
     fn can_accept_work(&self, work: &WorkerLoad) -> bool {
         self.current_workers < self.max_workers
-            && self.current_resource_usage + work.resource_cost <= self.max_resource_budget
+            && self
+                .current_resource_usage
+                .checked_add(work.resource_cost)
+                .map_or(false, |total| total <= self.max_resource_budget)
     }
 
     /// Acquire a worker slot and resource budget.
-    pub fn acquire_worker(&mut self, work_id: u64, cost: u32) -> Result<(), &'static str> {
+    pub fn acquire_worker(&mut self, _work_id: u64, cost: u32) -> Result<(), &'static str> {
         if self.current_workers >= self.max_workers {
             return Err("Worker limit reached");
         }
 
-        if self.current_resource_usage + cost > self.max_resource_budget {
+        let new_usage = self
+            .current_resource_usage
+            .checked_add(cost)
+            .ok_or("Resource budget exceeded")?;
+        if new_usage > self.max_resource_budget {
             return Err("Resource budget exceeded");
         }
 
         self.current_workers = self.current_workers.saturating_add(1);
-        self.current_resource_usage = self.current_resource_usage.saturating_add(cost);
+        self.current_resource_usage = new_usage;
 
         Ok(())
     }
@@ -87,17 +115,21 @@ impl BoundedConcurrencyPool {
         self.current_resource_usage = self.current_resource_usage.saturating_sub(cost);
 
         if !self.work_queue.is_empty() {
-            if let Some(work) = self.work_queue.remove(0) {
-                if success {
-                    self.completed_work.push(work.work_id);
-                } else {
-                    self.rejected_work.push(work.work_id);
-                }
+            let work = self.work_queue.remove(0);
+            if success {
+                self.completed_work.push(work.work_id);
+            } else {
+                self.rejected_work.push(work.work_id);
             }
         }
     }
 
     /// Process work from the queue with concurrency limits.
+    ///
+    /// Items are processed highest-priority first. Items that do not currently
+    /// fit within the limits are skipped (backpressure) and remain queued. On
+    /// the first processing failure the item is recorded as rejected, its slot
+    /// is released, and the error is returned; remaining items stay queued.
     pub fn process_queue<F>(&mut self, mut process_fn: F) -> Result<(), &'static str>
     where
         F: FnMut(&WorkerLoad) -> Result<(), &'static str>,
@@ -112,14 +144,23 @@ impl BoundedConcurrencyPool {
 
             self.acquire_worker(work.work_id, work.resource_cost)?;
 
+            // Remove this item from the live queue before running it.
+            if let Some(pos) = self.work_queue.iter().position(|w| w.work_id == work.work_id) {
+                self.work_queue.remove(pos);
+            }
+
             match process_fn(work) {
                 Ok(()) => {
                     self.completed_work.push(work.work_id);
-                    self.release_worker(work.resource_cost, true);
+                    self.current_workers = self.current_workers.saturating_sub(1);
+                    self.current_resource_usage =
+                        self.current_resource_usage.saturating_sub(work.resource_cost);
                 }
                 Err(e) => {
                     self.rejected_work.push(work.work_id);
-                    self.release_worker(work.resource_cost, false);
+                    self.current_workers = self.current_workers.saturating_sub(1);
+                    self.current_resource_usage =
+                        self.current_resource_usage.saturating_sub(work.resource_cost);
                     return Err(e);
                 }
             }
@@ -172,7 +213,8 @@ impl BoundedConcurrencyPool {
         if self.max_resource_budget == 0 {
             return 0;
         }
-        (self.current_resource_usage * 100) / self.max_resource_budget
+        let pct = (self.current_resource_usage as u64 * 100) / self.max_resource_budget as u64;
+        pct.min(u32::MAX as u64) as u32
     }
 }
 
@@ -181,6 +223,14 @@ mod tests {
     extern crate std;
 
     use super::*;
+
+    fn load(id: u64, cost: u32, priority: u32) -> WorkerLoad {
+        WorkerLoad {
+            work_id: id,
+            resource_cost: cost,
+            priority,
+        }
+    }
 
     #[test]
     fn test_bounded_pool_creation() {
@@ -192,33 +242,25 @@ mod tests {
     #[test]
     fn test_submit_work_within_limits() {
         let mut pool = BoundedConcurrencyPool::new(5, 1000);
-        let work = WorkerLoad {
-            work_id: 1,
-            resource_cost: 100,
-            priority: 1,
-        };
-
-        let result = pool.submit_work(work);
-        assert!(result.is_ok());
+        assert!(pool.submit_work(load(1, 100, 1)).is_ok());
         assert_eq!(pool.pending_work(), 1);
     }
 
     #[test]
     fn test_backpressure_on_resource_limit() {
         let mut pool = BoundedConcurrencyPool::new(5, 100);
-        let work1 = WorkerLoad {
-            work_id: 1,
-            resource_cost: 80,
-            priority: 1,
-        };
-        let work2 = WorkerLoad {
-            work_id: 2,
-            resource_cost: 50,
-            priority: 1,
-        };
+        assert!(pool.submit_work(load(1, 80, 1)).is_ok());
+        let rejected = pool.submit_work(load(2, 50, 1));
+        assert!(rejected.is_err());
+        assert_eq!(rejected.unwrap_err().work_id, 2);
+        assert_eq!(pool.rejected_work_count(), 1);
+    }
 
-        assert!(pool.submit_work(work1).is_ok());
-        assert!(pool.submit_work(work2).is_err());
+    #[test]
+    fn test_backpressure_on_worker_limit() {
+        let mut pool = BoundedConcurrencyPool::new(1, 10_000);
+        assert!(pool.acquire_worker(1, 10).is_ok());
+        assert!(pool.submit_work(load(2, 10, 1)).is_err());
     }
 
     #[test]
@@ -235,12 +277,42 @@ mod tests {
     }
 
     #[test]
+    fn test_release_underflow_saturates() {
+        let mut pool = BoundedConcurrencyPool::new(5, 1000);
+        pool.release_worker(500, true);
+        assert_eq!(pool.current_workers, 0);
+        assert_eq!(pool.current_resource_usage, 0);
+        assert!(pool.verify_backpressure().is_ok());
+    }
+
+    #[test]
     fn test_worker_limit_enforcement() {
         let mut pool = BoundedConcurrencyPool::new(2, 10000);
 
         assert!(pool.acquire_worker(1, 100).is_ok());
         assert!(pool.acquire_worker(2, 100).is_ok());
-        assert!(pool.acquire_worker(3, 100).is_err());
+        assert_eq!(pool.acquire_worker(3, 100), Err("Worker limit reached"));
+    }
+
+    #[test]
+    fn test_oversized_cost_does_not_overflow() {
+        let mut pool = BoundedConcurrencyPool::new(5, 1000);
+        assert!(pool.acquire_worker(1, 900).is_ok());
+        // u32::MAX cost would overflow a naive add; must be refused cleanly.
+        assert_eq!(
+            pool.acquire_worker(2, u32::MAX),
+            Err("Resource budget exceeded")
+        );
+        assert_eq!(pool.current_resource_usage, 900);
+        assert!(pool.submit_work(load(3, u32::MAX, 1)).is_err());
+    }
+
+    #[test]
+    fn test_zero_budget_refuses_all_work() {
+        let mut pool = BoundedConcurrencyPool::new(5, 0);
+        assert!(pool.submit_work(load(1, 1, 1)).is_err());
+        assert_eq!(pool.acquire_worker(2, 1), Err("Resource budget exceeded"));
+        assert_eq!(pool.resource_utilization_percent(), 0);
     }
 
     #[test]
@@ -268,5 +340,84 @@ mod tests {
         pool.acquire_worker(1, 500).ok();
 
         assert_eq!(pool.resource_utilization_percent(), 50);
+    }
+
+    #[test]
+    fn test_normal_path_processes_by_priority() {
+        let mut pool = BoundedConcurrencyPool::new(5, 1000);
+        pool.submit_work(load(1, 100, 1)).unwrap();
+        pool.submit_work(load(2, 100, 9)).unwrap();
+        pool.submit_work(load(3, 100, 5)).unwrap();
+
+        let mut order = std::vec::Vec::new();
+        pool.process_queue(|w| {
+            order.push(w.work_id);
+            Ok(())
+        })
+        .unwrap();
+
+        assert_eq!(order, std::vec![2, 3, 1]);
+        assert_eq!(pool.completed_work_count(), 3);
+        assert_eq!(pool.pending_work(), 0);
+        assert_eq!(pool.current_workers, 0);
+        assert_eq!(pool.current_resource_usage, 0);
+    }
+
+    #[test]
+    fn test_failure_path_releases_resources_and_stops() {
+        let mut pool = BoundedConcurrencyPool::new(5, 1000);
+        pool.submit_work(load(1, 100, 9)).unwrap();
+        pool.submit_work(load(2, 100, 1)).unwrap();
+
+        let res = pool.process_queue(|w| {
+            if w.work_id == 1 {
+                Err("boom")
+            } else {
+                Ok(())
+            }
+        });
+
+        assert_eq!(res, Err("boom"));
+        assert_eq!(pool.rejected_work_count(), 1);
+        assert_eq!(pool.current_workers, 0);
+        assert_eq!(pool.current_resource_usage, 0);
+        // The non-failing item remains queued for recovery / retry.
+        assert_eq!(pool.pending_work(), 1);
+    }
+
+    #[test]
+    fn test_retry_after_failure_succeeds() {
+        let mut pool = BoundedConcurrencyPool::new(5, 1000);
+        pool.submit_work(load(7, 100, 1)).unwrap();
+
+        assert!(pool.process_queue(|_| Err("transient")).is_err());
+        assert_eq!(pool.pending_work(), 0);
+
+        // Retry: resubmit the rejected item and process again.
+        pool.submit_work(load(7, 100, 1)).unwrap();
+        assert!(pool.process_queue(|_| Ok(())).is_ok());
+        assert_eq!(pool.completed_work_count(), 1);
+    }
+
+    #[test]
+    fn test_saturation_under_worst_case_load() {
+        let mut pool = BoundedConcurrencyPool::new(4, 400);
+        let mut accepted = 0;
+        let mut refused = 0;
+        for id in 0..1000u64 {
+            match pool.submit_work(load(id, 100, 1)) {
+                Ok(()) => accepted += 1,
+                Err(_) => refused += 1,
+            }
+        }
+        assert_eq!(accepted, 4);
+        assert_eq!(refused, 996);
+        assert_eq!(pool.pending_work(), 4);
+        assert!(pool.verify_backpressure().is_ok());
+        assert_eq!(pool.resource_utilization_percent(), 0);
+
+        pool.process_queue(|_| Ok(())).unwrap();
+        assert_eq!(pool.completed_work_count(), 4);
+        assert_eq!(pool.current_resource_usage, 0);
     }
 }
