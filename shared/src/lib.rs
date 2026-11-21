@@ -26,6 +26,7 @@ pub mod dry_run_policy;
 pub mod dashboard;
 pub mod degradation;
 pub mod degraded_mode;
+pub mod deployment_rollback_verification;
 pub mod deterministic_sort;
 pub mod diagnostics;
 pub mod disclosure;
@@ -41,6 +42,7 @@ pub mod failure_registry;
 pub mod export;
 pub mod failure_fixtures;
 pub mod feature_flags;
+pub mod fuzz_boundary_inputs;
 pub mod health;
 pub mod health_guard;
 pub mod history;
@@ -60,18 +62,22 @@ pub mod notification_dedup;
 pub mod operational_metadata;
 pub mod operator_runbook;
 pub mod ownership_history;
+pub mod ownership_transfer_manager;
 pub mod pagination;
 pub mod payments;
 pub mod policy;
 pub mod policy_preview;
+pub mod permission_diff_preview;
 pub mod preflight;
 pub mod problem_details;
+pub mod problem_details_taxonomy;
 pub mod public_status;
 pub mod projection_repair;
 pub mod protocol_changelog;
 pub mod quota;
 pub mod reconciliation;
 pub mod recovery;
+pub mod rare_failure_fixtures;
 pub mod release_artifacts;
 pub mod release_readiness;
 pub mod replay;
@@ -83,6 +89,8 @@ pub mod sanitize;
 pub mod scan_guard;
 pub mod schema_evolution;
 pub mod semantic;
+pub mod sensitive_boundary;
+pub mod session_invalidation;
 pub mod session_revocation;
 pub mod signed_audit_receipt;
 pub mod dry_run_repair;
@@ -492,6 +500,17 @@ pub use dry_run_policy::{
     RecordSnapshot, RecordVerdict, MAX_DRY_RUN_RECORDS, TOPIC_DRY_RUN,
 };
 pub use utils::{is_expired, now};
+pub use sensitive_boundary::{
+    assert_no_forbidden_fields, assert_webhook_payload_clean, contains_bidi_controls,
+    contains_executable_markup, contains_path_traversal, contains_template_injection,
+    enforce_export_scope_boundary, has_allowlisted_download_extension,
+    has_dangerous_download_extension, is_export_allowlisted_field, is_forbidden_export_field,
+    is_forbidden_ssrf_destination, sanitize_export_record, sanitize_render_content,
+    validate_download_filename, validate_download_uri, validate_export_chunk_size,
+    validate_render_content, validate_webhook_destination, verify_webhook_ingress_boundary,
+    BoundaryDomain, BoundaryModule, DownloadScheme, SensitiveBoundaryError,
+    BOUNDARY_CHUNK_CEILING, MAX_DOWNLOAD_URI_LEN, MAX_FILENAME_LEN, MAX_RENDER_TEXT_LEN,
+    MAX_WEBHOOK_PAYLOAD_LEN,
 pub use snapshot_restore::{
     clear_quarantine, execute_restore_verification_and_rebuild, get_latest_restore_receipt,
     get_restore_receipt, get_stored_derived_view, is_module_quarantined, rebuild_derived_views,
@@ -576,6 +595,9 @@ mod test_ledger_fixtures;
 // Schema-compatibility tests for versioned domain events (Issue #337).
 #[cfg(test)]
 mod test_domain_events;
+// Sensitive-content boundary tests for rendering, downloads, webhooks, and exports.
+#[cfg(test)]
+mod test_sensitive_boundary;
 // Snapshot restore verification and derived view rebuilding tests.
 #[cfg(test)]
 mod test_snapshot_restore;

@@ -373,6 +373,81 @@ mod tests {
     }
 
     #[test]
+    fn test_interrupted_prepared_checkpoint_resumes_with_same_id_and_skips_committed_effect() {
+        let (env, contract_id, _admin, actor, target) = setup();
+        let payload_hash: BytesN<32> =
+            env.crypto().sha256(&Bytes::from_slice(&env, b"recovery_payout")).into();
+
+        // The first invocation persists Prepared and is interrupted before the
+        // external effect runs.
+        let prepared = env.as_contract(&contract_id, || {
+            match begin_side_effect(
+                &env,
+                &actor,
+                symbol_short!("recover"),
+                2,
+                SideEffectKind::SettlementPayout,
+                &target,
+                payload_hash.clone(),
+            )
+            .unwrap()
+            {
+                BeginEffectOutcome::Execute(cp) => cp,
+                _ => panic!("expected first attempt to execute"),
+            }
+        });
+        assert_eq!(prepared.state, SideEffectState::Prepared);
+        assert_eq!(prepared.attempts, 1);
+
+        // A later invocation uses the exact same effect identity and safely
+        // resumes the interrupted Prepared checkpoint.
+        let resumed = env.as_contract(&contract_id, || {
+            match begin_side_effect(
+                &env,
+                &actor,
+                symbol_short!("recover"),
+                2,
+                SideEffectKind::SettlementPayout,
+                &target,
+                payload_hash.clone(),
+            )
+            .unwrap()
+            {
+                BeginEffectOutcome::Retry(cp) => cp,
+                _ => panic!("expected interrupted attempt to be retried"),
+            }
+        });
+        assert_eq!(resumed.effect_id, prepared.effect_id);
+        assert_eq!(resumed.prepared_at, prepared.prepared_at);
+        assert_eq!(resumed.attempts, 2);
+        assert_eq!(resumed.state, SideEffectState::Prepared);
+
+        // Simulate the caller executing the effect after Retry and recording
+        // the commit, then restarting once more.
+        let committed = env.as_contract(&contract_id, || {
+            commit_side_effect(&env, &actor, &resumed.effect_id).unwrap()
+        });
+        assert_eq!(committed.state, SideEffectState::Committed);
+
+        let after_commit = env.as_contract(&contract_id, || {
+            begin_side_effect(
+                &env,
+                &actor,
+                symbol_short!("recover"),
+                2,
+                SideEffectKind::SettlementPayout,
+                &target,
+                payload_hash,
+            )
+            .unwrap()
+        });
+        match after_commit {
+            BeginEffectOutcome::AlreadyCommitted(cp) => assert_eq!(cp, committed),
+            _ => panic!("committed effect must not be executed again"),
+        }
+    }
+
+    #[test]
     fn test_failure_retry_and_admin_rollback_paths() {
         let (env, contract_id, admin, actor, target) = setup();
         let payload_hash: BytesN<32> = env.crypto().sha256(&Bytes::from_slice(&env, b"hook_1")).into();
