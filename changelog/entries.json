@@ -358,5 +358,14 @@
     "migration_notes": "",
     "issue": 500,
     "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-21",
+    "impact": "compatible",
+    "summary": "Added duplicate-submission concurrency coverage, deterministic idempotent re-execution verification, and stale-version conflict rejection in testing::concurrency_dup_stale (#501).",
+    "migration_notes": "",
+    "issue": 501,
+    "pr": null
   }
 ]
