@@ -257,7 +257,10 @@ impl AidContract {
         }
 
         // Validate/normalize the optional correlation ID before any state change.
-        let correlation_id = correlation::normalize(&env, correlation_id);
+        let correlation_id = match correlation::normalize(&env, correlation_id) {
+            Ok(id) => id,
+            Err(e) => panic_with_error!(&env, e),
+        };
 
         // Quota enforcement (Issue #65): fail-open when unconfigured so
         // existing deployments keep working until maintainers set limits.
