@@ -11,6 +11,8 @@ crate-type = ["cdylib"]
 [dependencies]
 soroban-sdk = { workspace = true }
 shared = { workspace = true }
+# Auction anti-sniping extension and minimum bid increment are implemented
+# in the marketplace auction module; no additional crate dependencies are required.
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
