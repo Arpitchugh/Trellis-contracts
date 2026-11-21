@@ -594,3 +594,7 @@ mod test_resumable_repair;
 mod test_init_rollback;
 #[cfg(test)]
 mod test_compat_fixtures;
+pub mod workflow_synthetic_monitor;
+pub mod ttl_monitor_repair;
+pub mod dependency_aware_health;
+pub mod unified_dedup;
