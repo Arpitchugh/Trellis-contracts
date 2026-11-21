@@ -1,4 +1,4 @@
-# Feature-Flag Rollout Guard with Automatic Rollback Verification (Issue #239)
+# Feature-Flag Rollout Guard with Automatic Rollback Verification (Issues #239, #295, #503)
 
 The Feature-Flag Rollout Guard provides a resilient, automated safety harness for introducing risky changes across the six core Soroban contract domains in Trellis:
 - **Treasury** (sweeps, category balance rebalancing, withdrawal limits)

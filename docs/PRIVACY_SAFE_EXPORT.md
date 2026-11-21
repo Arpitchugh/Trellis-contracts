@@ -1,4 +1,4 @@
-# Privacy-safe export with field-level authorization (Issue #294)
+# Privacy-safe export with field-level authorization (Issues #294, #502)
 
 Code: `shared::export::{generate_field_scoped_export, field_visible_to, is_personal_field}`
 Tests: `cargo test -p shared export`
