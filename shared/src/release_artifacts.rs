@@ -317,7 +317,7 @@ mod tests {
 
             let digest = publish_manifest(&env, &admin, &manifest(&env, 1)).unwrap();
             // Retrying the same publish is safe.
-            assert_eq!(publish_manifest(&env, &admin, &manifest(&env, 1)), Ok(digest));
+            assert_eq!(publish_manifest(&env, &admin, &manifest(&env, 1)), Ok(digest.clone()));
 
             let mut other = manifest(&env, 1);
             other.toolchain = symbol_short!("rust_1_82");

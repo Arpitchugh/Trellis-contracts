@@ -4,11 +4,11 @@
 //! receipt every time a privileged action is recorded.  Verification reads
 //! the live chain — no extra storage is needed.
 
-use soroban_sdk::{contracttype, symbol_short, BytesN, Env, Symbol};
+use soroban_sdk::{contracttype, BytesN, Env, Symbol};
 
 use crate::{
     audit_ledger::{
-        append_privileged, entry_hash, get_entry, record_admin_change,
+        append_event, entry_hash, get_entry, record_admin_change, AuditEventClass,
         AdminChangeReceipt, AuditEventParams, AuditLedgerEntry, AUDIT_LEDGER_SCHEMA_VERSION,
     },
     errors::Error,
@@ -64,7 +64,12 @@ pub struct ReceiptVerification {
 
 /// Append a privileged event and return a [`SignedAuditReceipt`].
 pub fn issue_privileged_receipt(env: &Env, params: AuditEventParams) -> Result<SignedAuditReceipt, Error> {
-    append_privileged(env, params)?;
+    // `append_privileged` takes individual fields and drops amount/resource/
+    // correlation; apply its class rule here and keep the full params.
+    if params.kind.class() != AuditEventClass::Privileged {
+        return Err(Error::InvalidArgument);
+    }
+    append_event(env, params)?;
     let seq = crate::audit_ledger::head(env).length;
     let entry = get_entry(env, seq).ok_or(Error::NotFound)?;
     Ok(build_receipt(env, &entry))
@@ -75,7 +80,15 @@ pub fn issue_admin_change_receipt(
     env: &Env,
     params: AuditEventParams,
 ) -> Result<(SignedAuditReceipt, AdminChangeReceipt), Error> {
-    let admin = record_admin_change(env, params)?;
+    let admin = record_admin_change(
+        env,
+        params.kind,
+        params.module,
+        params.actor,
+        params.subject,
+        params.attribute,
+        params.note,
+    )?;
     let entry = get_entry(env, admin.seq).ok_or(Error::NotFound)?;
     Ok((build_receipt(env, &entry), admin))
 }
@@ -135,7 +148,7 @@ mod tests {
     use super::*;
     use soroban_sdk::{
         testutils::{Address as _, Ledger as _, LedgerInfo},
-        Address, BytesN, Env,
+        symbol_short, Address, BytesN, Env,
     };
     use crate::audit_ledger::{AuditEventKind, AuditEventParams};
 
@@ -148,7 +161,8 @@ mod tests {
             min_temp_entry_ttl: 1, min_persistent_entry_ttl: 1, max_entry_ttl: 10_000,
         });
         crate::audit_ledger::checkpoint(&env);
-        (env, Address::generate(&env))
+        let caller = Address::generate(&env);
+        (env, caller)
     }
 
     fn params(env: &Env, actor: &Address) -> AuditEventParams {

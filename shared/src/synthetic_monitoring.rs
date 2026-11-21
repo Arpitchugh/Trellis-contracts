@@ -247,7 +247,8 @@ mod tests {
             network_id: Default::default(), base_reserve: 10,
             min_temp_entry_ttl: 1, min_persistent_entry_ttl: 1, max_entry_ttl: 10_000,
         });
-        (env, Address::generate(&env))
+        let caller = Address::generate(&env);
+        (env, caller)
     }
 
     fn valid_input(env: &Env) -> AidProbeInput {
@@ -300,10 +301,12 @@ mod tests {
         let report = run_probes(&env, &caller, &input, zero_cid(&env), true);
         assert!(report.failed > 0);
         // Subsequent steps should be skipped.
-        let skipped: Vec<&ProbeRecord> = report.records.iter()
+        let skipped = report
+            .records
+            .iter()
             .filter(|r| r.result == ProbeResult::Skipped)
-            .collect();
-        assert!(!skipped.is_empty());
+            .count();
+        assert!(skipped > 0);
     }
 
     #[test]
