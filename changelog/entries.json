@@ -376,5 +376,14 @@
     "migration_notes": "",
     "issue": 502,
     "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-21",
+    "impact": "compatible",
+    "summary": "Implemented feature rollout guardrails, verified emergency disablement, and idempotent manual emergency_stop in shared::rollout_guard (#503).",
+    "migration_notes": "",
+    "issue": 503,
+    "pr": null
   }
 ]
