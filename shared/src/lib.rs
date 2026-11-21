@@ -277,9 +277,4 @@ DependencyStatus,
 pub use health_guard::{
     breaker_state, check_and_record_attempt, execute_guarded, get_retry_budget,
     is_registered_reporter, register_reporter, report_health_check, reset_breaker,
-    revoke_reporter, set_retry_budget, CircuitBreakerState, RetryBudget,
-    DEFAULT_RETRY_ATTEMPTS, DEFAULT_RETRY_COOLDOWN_LEDGERS, DEFAULT_RETRY_WINDOW_LEDGERS,
-    TOPIC_HEALTH_GUARD,
-};
-pub use impersonation::{
-check_action_permission, create_sess
+    revoke_reporter, 

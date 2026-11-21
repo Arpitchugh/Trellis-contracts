@@ -241,6 +241,11 @@ pub fn current_call_depth(env: &Env) -> u32 {
     instance_get::<_, u32>(env, &CALL_DEPTH).unwrap_or(0)
 }
 
+/// Returns the configured maximum cross-contract call depth.
+pub fn max_call_depth(env: &Env) -> u32 {
+    instance_get::<_, u32>(env, &MAX_CALL_DEPTH).unwrap_or(DEFAULT_MAX_CALL_DEPTH)
+}
+
 #[contract]
 pub struct TreasuryContract;
 
