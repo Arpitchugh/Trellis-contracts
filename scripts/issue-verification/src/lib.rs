@@ -70,18 +70,25 @@ mod test_concurrent_replay;
 #[path = "../../../shared/src/test_init_rollback.rs"]
 mod test_init_rollback;
 #[cfg(test)]
-#[path = "../../../shared/src/test_queue_backpressure.rs"]
-mod test_queue_backpressure;
-#[cfg(test)]
-#[path = "../../../shared/src/test_resumable_repair.rs"]
-mod test_resumable_repair;
-#[path = "../../../shared/src/time_window.rs"]
-pub mod time_window;
-#[path = "../../../shared/src/treasury_conservation.rs"]
-pub mod treasury_conservation;
+#[path = "../../../shared/src/test_compat_fixtures.rs"]
+mod test_compat_fixtures;
+#[path = "../../../shared/src/config_audit.rs"]
+pub mod config_audit;
 #[path = "../../../shared/src/upgrade_compat_snapshot.rs"]
 pub mod upgrade_compat_snapshot;
-#[path = "../../../shared/src/user_facing_degraded_status.rs"]
-pub mod user_facing_degraded_status;
-#[path = "../../../shared/src/workflow_failure_injection.rs"]
-pub mod workflow_failure_injection;
+#[path = "../../../shared/src/pagination.rs"]
+pub mod pagination;
+#[path = "../../../shared/src/event_pagination.rs"]
+pub mod event_pagination;
+#[path = "../../../shared/src/treasury_conservation.rs"]
+pub mod treasury_conservation;
+#[path = "../../../shared/src/auth_fingerprint.rs"]
+pub mod auth_fingerprint;
+#[path = "../../../shared/src/ownership_transfer_manager.rs"]
+pub mod ownership_transfer_manager;
+#[path = "../../../shared/src/rare_failure_fixtures.rs"]
+pub mod rare_failure_fixtures;
+#[path = "../../../shared/src/deterministic_sort.rs"]
+pub mod deterministic_sort;
+#[path = "../../../shared/src/session_invalidation.rs"]
+pub mod session_invalidation;
