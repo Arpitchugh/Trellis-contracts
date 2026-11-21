@@ -1,31 +1,45 @@
 #![no_std]
 pub mod abuse;
 pub mod accessibility;
+pub mod allowlist;
 pub mod analytics;
+pub mod admin_config_audit;
 pub mod audit_ledger;
 pub mod auth;
 pub mod backfill;
 pub mod batch;
 pub mod batch_retry;
+pub mod bounded_batch;
+pub mod bounded_cache;
 pub mod canonical;
 pub mod chaos;
 pub mod client;
 pub mod client_validation;
 pub mod compat;
+pub mod conflict_resolver;
+pub use conflict_resolver::{resolve_conflict_pair, ConflictCandidate, ConflictResolutionResult, ConflictWinner};
 pub mod config;
+pub mod config_audit;
 pub mod config_version;
 pub mod domain_events;
+pub mod dry_run_policy;
 pub mod dashboard;
 pub mod degradation;
 pub mod degraded_mode;
+pub mod deterministic_sort;
 pub mod diagnostics;
 pub mod disclosure;
+pub mod duplicate_suppression;
 pub mod error_taxonomy;
 pub mod errors;
 pub mod event_dead_letter;
+pub mod event_schema_drift;
 pub mod events;
 pub mod evidence;
+pub mod external_evidence;
+pub mod failure_registry;
 pub mod export;
+pub mod failure_fixtures;
 pub mod feature_flags;
 pub mod health;
 pub mod health_guard;
@@ -34,35 +48,49 @@ pub mod idempotency;
 pub mod impersonation;
 pub mod import;
 pub mod init_rollback;
+pub mod input_limits;
 pub mod invariants;
 pub mod jobs;
 pub mod lifecycle;
 pub mod lifecycle_events;
+pub mod maintainer_approval;
 pub mod math;
 pub mod migration;
+pub mod notification_dedup;
 pub mod operational_metadata;
 pub mod operator_runbook;
+pub mod ownership_history;
 pub mod pagination;
 pub mod payments;
 pub mod policy;
 pub mod policy_preview;
 pub mod preflight;
+pub mod problem_details;
 pub mod public_status;
 pub mod projection_repair;
 pub mod protocol_changelog;
 pub mod quota;
 pub mod reconciliation;
 pub mod recovery;
+pub mod release_artifacts;
 pub mod release_readiness;
 pub mod replay;
+pub mod resumable_repair;
 pub mod risk_scoring;
 pub mod rollout_guard;
 pub mod retention;
 pub mod sanitize;
 pub mod scan_guard;
+pub mod schema_evolution;
 pub mod semantic;
 pub mod sensitive_boundary;
+pub mod session_revocation;
+pub mod signed_audit_receipt;
+pub mod dry_run_repair;
+pub mod synthetic_monitoring;
+pub mod side_effect_checkpoint;
 pub mod snapshot;
+pub mod snapshot_restore;
 pub mod storage;
 pub mod stale_state;
 pub mod storage_version;
@@ -70,13 +98,33 @@ pub mod telemetry;
 pub mod timeline;
 pub mod time_window;
 pub mod utils;
+pub mod versioned_replay;
 pub mod webhook;
 pub mod workflow_correlation;
+pub mod workflow_failure_injection;
+pub mod user_facing_degraded_status;
+pub mod upgrade_compat_snapshot;
+pub mod event_pagination;
+pub mod treasury_conservation;
+pub mod auth_fingerprint;
+#[cfg(test)]
+pub mod test_boundary_properties;
+#[cfg(test)]
+pub mod test_schema_compat;
 // Re-export the most commonly-needed items at crate root for ergonomic use.
 pub use abuse::{
     assess_high_impact_abuse, evaluate_high_impact_abuse, get_abuse_policy, get_abuse_state,
     is_abuse_blocked, record_abuse, set_abuse_policy, AbusePolicy, AbuseState,
     HighImpactAbuseContext,
+};
+pub use allowlist::{
+    add_allowed_destination, add_allowed_extension, add_allowed_host,
+    default_policy as default_allowlist_policy, get_policy as get_allowlist_policy,
+    remove_allowed_destination, remove_allowed_extension, remove_allowed_host,
+    restore_policy as restore_allowlist_policy,
+    validate_destination as validate_allowlisted_destination,
+    validate_url as validate_allowlisted_url, AllowlistError, AllowlistPolicy,
+    MAX_ALLOWLIST_ENTRIES, MAX_EXTENSION_LEN, MAX_HOST_LEN,
 };
 pub use risk_scoring::{
     assess_and_record, evaluate_risk, get_actor_profile, get_risk_policy, reset_actor_risk,
@@ -98,10 +146,25 @@ aggregate_events, is_fully_suppressed, is_safe_dimension, is_sensitive_dimension
 AggregateBucket, AnalyticsReport, PrivacyConfig, RawObservation, ANALYTICS_METRIC_VERSION,
 };
 pub use auth::{
-accept_ownership_transfer, cancel_ownership_transfer, get_admin,
-get_pending_ownership_transfer, has_permission, initialize_admin, propose_ownership_transfer,
+accept_ownership_transfer, cancel_ownership_transfer, expire_ownership_transfer, get_admin,
+get_pending_ownership_transfer, has_permission, initialize_admin, is_ownership_transfer_expired,
+ownership_transfer_time_remaining, propose_ownership_transfer, reject_ownership_transfer,
 require_admin, require_not_paused, require_permission, role_for_permission, set_admin,
 PendingOwnershipTransfer, Permission, Role,
+};
+pub use config_audit::{
+    apply_sensitive_config_change, get_config_audit_evidence, get_sensitive_config_value,
+    rollback_config_change, verify_config_audit_chain, ConfigAuditEvidence, ConfigAuditError,
+};
+pub use session_revocation::{
+    derive_token_id, get_session_token, get_subject_security_state, issue_session_token,
+    revoke_session_token, trigger_security_revocation, validate_session_token, SecurityEventKind,
+    SessionToken, SubjectSecurityState, TokenStatus,
+};
+pub use side_effect_checkpoint::{
+    begin_side_effect, commit_side_effect, derive_effect_id, fail_side_effect,
+    get_side_effect_checkpoint, rollback_side_effect, BeginEffectOutcome, SideEffectCheckpoint,
+    SideEffectKind, SideEffectState, DEFAULT_MAX_EFFECT_RETRIES,
 };
 pub use backfill::{
 advance_checkpoint, begin_backfill, clear_checkpoint, complete_backfill, dedupe_items,
@@ -109,9 +172,6 @@ dry_run as dry_run_backfill, fail_backfill, is_resumable as is_backfill_resumabl
 load_checkpoint as load_backfill_checkpoint, resume_backfill,
 save_checkpoint as save_backfill_checkpoint,
 BackfillAction, BackfillCheckpoint, BackfillDuplicatePolicy, BackfillError,
-advance_checkpoint, begin_backfill, clear_checkpoint, complete_backfill, dry_run as dry_run_backfill,
-fail_backfill, is_resumable as is_backfill_resumable, load_checkpoint as load_backfill_checkpoint,
-save_checkpoint as save_backfill_checkpoint, BackfillAction, BackfillCheckpoint, BackfillError,
 BackfillItem, BackfillMode, BackfillModule, BackfillPlan, BackfillReport, BackfillStatus,
 };
 pub use batch::{
@@ -188,17 +248,13 @@ IMPORT_COMMITTED, IMPORT_FAILED, IMPORT_SIMULATED, PARAMETER_CHANGED, PAYMENT_ES
 PAYMENT_ESCROW_REFUNDED, PAYMENT_ESCROW_RELEASED, PAYMENT_FEE, PAYMENT_TRANSFER,
 REFERRAL_ACCRUED, REFERRAL_REGISTERED, REFERRER_SET, TIER_CONFIG_SET, TREASURY_DEPOSIT,
 TREASURY_EMERGENCY_WITHDRAW, TREASURY_SET, TREASURY_WITHDRAW,
+};
 pub use event_dead_letter::{
     dead_letter_ids as event_dead_letter_ids, discard_dead_letter as discard_event_dead_letter,
     dispatch_event, get_dead_letter as get_event_dead_letter, pending_dead_letter_ids,
     requeue_dead_letter as requeue_event_dead_letter, retry_dead_letter, DispatchOutcome,
     DomainEventHandler, EventDeadLetter, EventDispatchStatus, EVENT_DLQ_DEAD_LETTERED,
     EVENT_DLQ_REQUEUED, EVENT_DLQ_RESOLVED, EVENT_DLQ_RETRIED, EVENT_DLQ_TOPIC,
-};
-pub use events::{
-emit, emit_collection_registered, emit_import_committed, emit_import_failed,
-emit_import_simulated, emit_nft_auction, emit_nft_bid, emit_nft_listed, emit_nft_offer,
-emit_nft_settle, emit_nft_sold, emit_royalty_paid,
 };
 pub use evidence::*;
 pub use chaos::*;
@@ -216,14 +272,16 @@ pub use health_guard::{
 pub use impersonation::{
 check_action_permission, create_session, get_active_sessions_for_impersonator,
 get_active_sessions_for_user, get_current_impersonation, is_being_impersonated, record_action,
+support_access_notice,
 revoke_session, validate_session, ImpersonationAction, ImpersonationError, ImpersonationScope,
 ImpersonationSession, ResourceScope, ResourceType, SessionParams, SessionResult, SessionState,
+SupportAccessNotice,
 DEFAULT_SESSION_DURATION, MAX_CONCURRENT_SESSIONS, MAX_SESSION_DURATION,
 };
 pub use import::{
-compute_batch_fingerprint,
-compute_batch_fingerprint, dry_run as dry_run_import, execute_import,
+cancel_import, compute_batch_fingerprint, dry_run as dry_run_import, execute_import,
 generate_rollback_guidance, get_import_counter, get_imported_record, has_imported_record,
+is_import_cancelled,
 validate_config as validate_import_config, DuplicatePolicy, ImportConfig, ImportError,
 ImportItem, ImportMode, ImportReport, RollbackGuidance, RowError, StoredImportRecord,
 ABSOLUTE_MAX_IMPORT_SIZE, DEFAULT_MAX_IMPORT_SIZE, MAX_EXTERNAL_ID_LEN,
@@ -248,6 +306,20 @@ assert_lifecycle_sequence, emit_aid_event, emit_contract_record_event, emit_escr
 emit_lifecycle_transition, emit_proposal_event, emit_resource_transition, LifecycleEvent,
 LifecycleResource, LifecycleTransition, LIFECYCLE_EVENT_SCHEMA_VERSION, LIFECYCLE_TOPIC,
 STATE_NONE,
+};
+pub use maintainer_approval::{
+    approve_intent, begin_execution, cancel_intent, default_policy as default_approval_policy,
+    export_receipts, get_approvals, get_intent, get_policy, get_receipt as get_intent_receipt,
+    intent_hash, intent_message, is_high_impact, is_maintainer as is_registered_maintainer,
+    key_owner, list_intents, list_receipts, maintainer_key, params_digest, pending_intents,
+    propose_intent, receipt_count, receipt_head, record_failure, record_success,
+    register_maintainer, reject_intent, revoke_maintainer, set_action_impact, set_policy,
+    sweep_expired, verify_export as verify_receipt_export, verify_receipts, ActionIntent, Approval,
+    ApprovalError, ApprovalPolicy, IntentReceipt, IntentStatus, ReceiptExportBundle, ReceiptHead,
+    ReceiptOutcome, ReceiptVerificationFailure, ReceiptVerificationReport, APPROVAL_DOMAIN,
+    DEFAULT_APPROVAL_THRESHOLD, DEFAULT_INTENT_TTL_LEDGERS, MAX_APPROVALS_PER_INTENT,
+    MAX_INTENT_PARAMS, MAX_INTENT_TTL_LEDGERS, MAX_RECEIPT_PAGE_LIMIT, MAX_VERIFY_RECEIPTS,
+    MAINTAINER_APPROVAL_SCHEMA_VERSION, RECEIPT_DOMAIN,
 };
 pub use migration::{
 begin_migration, clear_journal, dry_run, evaluate_post_checks, expected_step, fail_migration,
@@ -407,6 +479,17 @@ pub use policy_preview::{
     ProposedPolicyChange, RollbackConstraintReport, SideEffectSummary, DEFAULT_PREVIEW_VALIDITY_LEDGERS,
     TOPIC_POLICY_COMMIT, TOPIC_POLICY_ROLLBACK, TOPIC_POLICY_SIMULATION,
 };
+pub use bounded_cache::{
+    get as cache_get, initialize as cache_initialize, invalidate as cache_invalidate,
+    invalidate_all as cache_invalidate_all, put as cache_put, stats as cache_stats,
+    validate_config as validate_cache_config, CacheConfig, CacheEntry, CacheError, CacheMeta,
+    CacheStats, ABSOLUTE_MAX_CAPACITY, DEFAULT_MAX_AGE_LEDGERS, DEFAULT_MAX_CAPACITY,
+    TOPIC_CACHE_EVICT,
+};
+pub use dry_run_policy::{
+    dry_run_evaluate, DryRunError, DryRunReport as PolicyDryRunReport, DryRunSummary, ImpactKind,
+    RecordSnapshot, RecordVerdict, MAX_DRY_RUN_RECORDS, TOPIC_DRY_RUN,
+};
 pub use utils::{is_expired, now};
 pub use sensitive_boundary::{
     assert_no_forbidden_fields, assert_webhook_payload_clean, contains_bidi_controls,
@@ -419,13 +502,27 @@ pub use sensitive_boundary::{
     BoundaryDomain, BoundaryModule, DownloadScheme, SensitiveBoundaryError,
     BOUNDARY_CHUNK_CEILING, MAX_DOWNLOAD_URI_LEN, MAX_FILENAME_LEN, MAX_RENDER_TEXT_LEN,
     MAX_WEBHOOK_PAYLOAD_LEN,
+pub use snapshot_restore::{
+    clear_quarantine, execute_restore_verification_and_rebuild, get_latest_restore_receipt,
+    get_restore_receipt, get_stored_derived_view, is_module_quarantined, rebuild_derived_views,
+    reconcile_derived_views, rollback_restore, verify_critical_data_invariants,
+    CanonicalRestoreRecord, CriticalRecordKind, DerivedViewEntry, DerivedViewKind,
+    RestoreMismatchReport, RestoreModule, RestoreReport, RestoreRollbackSnapshot,
+    RestoreSeverity, RestoreStorageKey, RestoreVerificationFailure, RestoreVerificationReceipt,
+    SnapshotRestoreError,
 };
 #[cfg(test)]
 mod test_reconciliation;
 #[cfg(test)]
+mod test_failure_registry;
+#[cfg(test)]
 mod test_replay;
 #[cfg(test)]
 mod test_auth;
+#[cfg(test)]
+mod test_ownership_history;
+#[cfg(test)]
+mod test_permission_visibility;
 #[cfg(test)]
 mod test_client;
 #[cfg(test)]
@@ -434,6 +531,8 @@ mod test_disclosure;
 mod test_import;
 #[cfg(test)]
 mod test_jobs;
+#[cfg(test)]
+mod test_job_cancellation;
 #[cfg(test)]
 mod test_pagination;
 #[cfg(test)]
@@ -490,3 +589,16 @@ mod test_domain_events;
 // Sensitive-content boundary tests for rendering, downloads, webhooks, and exports.
 #[cfg(test)]
 mod test_sensitive_boundary;
+// Snapshot restore verification and derived view rebuilding tests.
+#[cfg(test)]
+mod test_snapshot_restore;
+#[cfg(test)]
+mod test_queue_backpressure;
+#[cfg(test)]
+mod test_concurrent_replay;
+#[cfg(test)]
+mod test_resumable_repair;
+#[cfg(test)]
+mod test_init_rollback;
+#[cfg(test)]
+mod test_compat_fixtures;

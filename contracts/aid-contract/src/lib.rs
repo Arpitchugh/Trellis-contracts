@@ -49,6 +49,7 @@ use soroban_sdk::{
 
 pub mod api;
 pub mod correlation;
+pub mod export;
 pub mod storage;
 mod transitions;
 pub mod types;
@@ -1172,6 +1173,7 @@ impl AidContract {
 
     /// Returns a paginated list of aid records created by `donor`.
     pub fn list_aids_by_donor(env: Env, donor: Address, cursor: u32, limit: u32) -> AidPage {
+        donor.require_auth();
         let ids = storage::get_donor_aids(&env, &donor);
         paginate(&env, &ids, cursor, limit)
     }
@@ -1183,6 +1185,7 @@ impl AidContract {
         cursor: u32,
         limit: u32,
     ) -> AidPage {
+        recipient.require_auth();
         let ids = storage::get_recipient_aids(&env, &recipient);
         paginate(&env, &ids, cursor, limit)
     }
@@ -1229,6 +1232,7 @@ impl AidContract {
         start_after_id: Option<u64>,
         limit: u32,
     ) -> AidPageResponse {
+        donor.require_auth();
         let ids = storage::get_donor_aids(&env, &donor);
         let req = shared::PageRequest::ascending(start_after_id, limit);
         let res = shared::paginate_id_list(&env, &ids, &req, shared::DEFAULT_MAX_SCAN, |id| {
@@ -1256,6 +1260,7 @@ impl AidContract {
         start_after_id: Option<u64>,
         limit: u32,
     ) -> AidPageResponse {
+        recipient.require_auth();
         let ids = storage::get_recipient_aids(&env, &recipient);
         let req = shared::PageRequest::ascending(start_after_id, limit);
         let res = shared::paginate_id_list(&env, &ids, &req, shared::DEFAULT_MAX_SCAN, |id| {
@@ -1415,3 +1420,7 @@ mod tests;
 /// `tests` so it can be run in isolation via `scripts/profile-budget.sh`.
 #[cfg(test)]
 mod profile_budget;
+
+
+#[cfg(test)]
+mod aid_export_test;

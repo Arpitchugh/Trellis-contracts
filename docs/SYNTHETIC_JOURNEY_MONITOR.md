@@ -14,10 +14,53 @@ cargo run -p testing --bin synthetic-journey-monitor
 ```
 
 The command prints one JSON object to stdout. Success includes `status`,
-`journey`, `latency_ms`, `steps`, and `settled_ledger`. Failure includes
-`failed_step`, `dependency`, and `detail`; it exits with status 1. The monitor
-uses a fixed seed and synthetic asset, so the path and settlement values are
-reproducible. Wall-clock latency naturally varies between runs.
+`journey`, `latency_ms`, `steps`, `settled_ledger` and `settlement_attempts`.
+Failure includes `failed_step`, `dependency`, `detail`, `retryable`,
+`settlement_pending` and `settlement_attempts`; it exits with status 1. The
+monitor uses a fixed seed and synthetic asset, so the path and settlement values
+are reproducible. Wall-clock latency naturally varies between runs.
+
+The journey logic lives in `testing::synthetic_monitor` (Issue #291) and is unit
+tested for the normal, failure, retry and authorization paths:
+
+```sh
+cargo test -p testing synthetic_monitor
+```
+
+### Retry behaviour
+
+A settlement timeout is retried up to `SYNTHETIC_MONITOR_MAX_SETTLEMENT_ATTEMPTS`
+times in total (default 3, clamped to 1–10). Retries go through
+`Sandbox::retry_pending_settlement`, which resubmits only the settlement leg.
+The monitor also asserts that exactly one token transfer happened, so a retry
+that paid the recipient twice is reported as a `workflow_assertion` failure.
+When the budget is exhausted, the result has `dependency: "rpc"`,
+`settlement_pending: true`, `retryable: true`.
+
+### Authorization
+
+The monitor refuses to run (`dependency: "credentials"`) before touching any
+adapter when:
+
+- `SYNTHETIC_MONITOR_SECRET` holds any key material (`UnsafeSecret`), or
+- `SYNTHETIC_MONITOR_RPC_URL` is not a loopback URL for the local sandbox (`ConfigInvalid`).
+
+A mainnet sandbox configuration is rejected at initialisation (`dependency: "sandbox"`).
+
+### Failure drills
+
+Set `SYNTHETIC_MONITOR_FAULT` to rehearse alerting without editing code:
+`oracle_unavailable`, `oracle_stale`, `underfunded_payer`, or `rpc_timeouts:<n>`
+(the first `n` settlement submissions time out).
+
+```sh
+SYNTHETIC_MONITOR_FAULT=rpc_timeouts:2 cargo run -p testing --bin synthetic-journey-monitor   # recovers, settlement_attempts=3
+SYNTHETIC_MONITOR_FAULT=rpc_timeouts:9 cargo run -p testing --bin synthetic-journey-monitor   # fails, retryable
+```
+
+`retryable` is `true` only for `oracle` and `rpc` failures. Token, credential,
+sandbox and assertion failures need a fix, not a rerun. The output keeps every
+field it had before and only adds new ones, so existing parsers keep working.
 
 ## Safety and scope
 

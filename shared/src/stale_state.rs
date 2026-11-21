@@ -344,9 +344,6 @@ mod tests {
         current.ledger_sequence += 1;
         let recovered = check_before_replay(&env, &id, current).unwrap();
         assert_eq!(recovered.status, QueuedOperationStatus::Conflict);
-        assert_eq!(
-            recovered.conflict_reason,
-            StaleStateReason::LedgerAdvanced
-        );
+        assert_eq!(recovered.conflict_reason, StaleStateReason::LedgerAdvanced);
     }
 }
