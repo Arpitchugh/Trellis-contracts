@@ -1,4 +1,5 @@
 /target/
+**/target/
 **/test_snapshots/
 
 # Files delivered into this folder by the Claude desktop app
