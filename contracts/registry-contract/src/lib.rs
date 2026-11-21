@@ -27,7 +27,7 @@
 //! For full API details, see the module items below.
 
 use shared::events::{emit_action_executed, emit_module_initialized};
-use shared::storage::{persistent_get, persistent_read, persistent_set};
+use shared::storage::{persistent_get, persistent_read, persistent_remove, persistent_set};
 use shared::{auth, errors::Error};
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, Address, Bytes, BytesN, Env, Map, Symbol,
@@ -42,6 +42,9 @@ const KEY_NAMES: Symbol = symbol_short!("names");
 const KEY_META_NAMES: Symbol = symbol_short!("meta_nms");
 const KEY_DEACTIVATED: Symbol = symbol_short!("deact");
 const KEY_DEACT_HIST: Symbol = symbol_short!("deacth");
+const KEY_PINNED: Symbol = symbol_short!("pinned");
+const KEY_DEPRECATION: Symbol = symbol_short!("deprec");
+const KEY_VER_REG: Symbol = symbol_short!("ver_reg");
 
 /// Bound global registry scans so getters and writes stay within Soroban
 /// execution budgets. Version history is independently bounded per name.
@@ -160,6 +163,14 @@ impl RegistryContract {
         persistent_set(
             &env,
             &(KEY_CONTRACTS, name.clone()),
+            &ContractRegistration {
+                address: address.clone(),
+                version,
+            },
+        );
+        persistent_set(
+            &env,
+            &(KEY_VER_REG, (name.clone(), version)),
             &ContractRegistration {
                 address: address.clone(),
                 version,
@@ -457,6 +468,136 @@ impl RegistryContract {
             }
         }
         Ok(metadata_map)
+    }
+
+    // ─── Version Pinning & Deprecation (Issue #545) ──────────────────────────
+
+    /// Pin resolution of `name` to a specific historical version.
+    pub fn pin_version(
+        env: Env,
+        caller: Address,
+        name: Symbol,
+        version: u32,
+    ) -> Result<(), Error> {
+        auth::require_admin(&env, &caller)?;
+        let versions: Vec<u32> =
+            persistent_get(&env, &(KEY_HISTORY, name.clone())).unwrap_or_else(|| Vec::new(&env));
+        if !versions.iter().any(|v| v == version) {
+            return Err(Error::InvalidArgument);
+        }
+
+        let pin = shared::registry_pinning::VersionPin {
+            name: name.clone(),
+            pinned_version: version,
+            pinned_by: caller.clone(),
+            pinned_at: env.ledger().timestamp(),
+        };
+        persistent_set(&env, &(KEY_PINNED, name), &pin);
+        Ok(())
+    }
+
+    /// Remove the pinned version for `name`, restoring default latest-version resolution.
+    pub fn unpin_version(
+        env: Env,
+        caller: Address,
+        name: Symbol,
+    ) -> Result<(), Error> {
+        auth::require_admin(&env, &caller)?;
+        persistent_remove(&env, &(KEY_PINNED, name));
+        Ok(())
+    }
+
+    /// Get current pinned version for `name` if one exists.
+    pub fn get_pin(env: Env, name: Symbol) -> Option<u32> {
+        persistent_read::<_, shared::registry_pinning::VersionPin>(&env, &(KEY_PINNED, name))
+            .map(|pin| pin.pinned_version)
+    }
+
+    /// Announce a deprecation notice with a future sunset timestamp and optional migration target.
+    pub fn deprecate_contract(
+        env: Env,
+        caller: Address,
+        name: Symbol,
+        version: u32,
+        sunset_at: u64,
+        migration_target: Option<Address>,
+        notice_symbol: Symbol,
+    ) -> Result<(), Error> {
+        auth::require_admin(&env, &caller)?;
+        let current_time = env.ledger().timestamp();
+        if sunset_at <= current_time {
+            return Err(Error::InvalidArgument);
+        }
+
+        let versions: Vec<u32> =
+            persistent_get(&env, &(KEY_HISTORY, name.clone())).unwrap_or_else(|| Vec::new(&env));
+        if !versions.iter().any(|v| v == version) {
+            return Err(Error::InvalidArgument);
+        }
+
+        let notice = shared::registry_pinning::DeprecationNotice {
+            name: name.clone(),
+            version,
+            deprecated_at: current_time,
+            sunset_at,
+            migration_target,
+            notice_symbol,
+        };
+        persistent_set(&env, &(KEY_DEPRECATION, (name, version)), &notice);
+        Ok(())
+    }
+
+    /// Cancel a deprecation notice (e.g. if deprecation was postponed or rolled back).
+    pub fn cancel_deprecation(
+        env: Env,
+        caller: Address,
+        name: Symbol,
+        version: u32,
+    ) -> Result<(), Error> {
+        auth::require_admin(&env, &caller)?;
+        persistent_remove(&env, &(KEY_DEPRECATION, (name, version)));
+        Ok(())
+    }
+
+    /// Query the deprecation notice for a given contract and version.
+    pub fn get_deprecation_notice(
+        env: Env,
+        name: Symbol,
+        version: u32,
+    ) -> Option<shared::registry_pinning::DeprecationNotice> {
+        persistent_read(&env, &(KEY_DEPRECATION, (name, version)))
+    }
+
+    /// Resolve contract address respecting version pinning and deprecation sunset guards.
+    pub fn resolve_contract(env: Env, name: Symbol) -> Result<(Address, u32), Error> {
+        let (latest_addr, latest_ver) = Self::get_contract(env.clone(), name.clone())?;
+        let target_ver = match Self::get_pin(env.clone(), name.clone()) {
+            Some(pinned_ver) => pinned_ver,
+            None => latest_ver,
+        };
+
+        // Check if sunset
+        if let Some(notice) = Self::get_deprecation_notice(env.clone(), name.clone(), target_ver) {
+            if notice.is_sunset(env.ledger().timestamp()) {
+                return Err(Error::ContractNotRegistered);
+            }
+        }
+
+        if target_ver == latest_ver {
+            Ok((latest_addr, latest_ver))
+        } else {
+            // Lookup specific version
+            if let Some(reg) = persistent_read::<_, ContractRegistration>(&env, &(KEY_VER_REG, (name, target_ver))) {
+                Ok((reg.address, reg.version))
+            } else {
+                Err(Error::NotFound)
+            }
+        }
+    }
+
+    /// Lookup historical contract registration for a specific version.
+    pub fn get_contract_version(env: Env, name: Symbol, version: u32) -> Option<ContractRegistration> {
+        persistent_read(&env, &(KEY_VER_REG, (name, version)))
     }
 }
 
