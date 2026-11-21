@@ -297,5 +297,23 @@
     "migration_notes": "",
     "issue": null,
     "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-19",
+    "impact": "compatible",
+    "summary": "Added synthetic monitoring for high-value aid journeys (donate_claim, donate_refund) against the real aid contract in ops_checks::high_value_journeys and the high-value-journey-monitor binary, with failure attribution, page/ticket severity, bounded paused-claim retry, lost-ack reconciliation and authorization probes (#451).",
+    "migration_notes": "",
+    "issue": 451,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-19",
+    "impact": "compatible",
+    "summary": "Added executable recovery checks for the escrow incident runbook (emergency_pause, expired_escrow) in ops_checks::incident_runbook and the incident-runbook-checks binary; shared::operator_runbook::evaluate_runbook now fails closed when a mandatory check is Skipped or InProgress (#452).",
+    "migration_notes": "No contract, storage or event change. Off-chain callers of evaluate_runbook (none in this repository) must mark mandatory checks Passed explicitly; a skipped or unfinished mandatory check now yields all_passed = false.",
+    "issue": 452,
+    "pr": null
   }
 ]
