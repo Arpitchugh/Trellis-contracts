@@ -421,5 +421,14 @@
     "migration_notes": "",
     "issue": 546,
     "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-22",
+    "impact": "compatible",
+    "summary": "aid-contract: un-hiding a record via set_aid_search_visibility now re-inserts it at its sorted index position instead of appending, so search_aids_cursor no longer skips restored records.",
+    "migration_notes": "Optional: run repair_search_index(admin) once after upgrading to re-sort any discovery index left unsorted by earlier un-hide calls.",
+    "issue": 480,
+    "pr": null
   }
 ]
