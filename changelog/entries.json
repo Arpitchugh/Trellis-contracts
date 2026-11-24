@@ -457,5 +457,14 @@
     "migration_notes": "",
     "issue": 522,
     "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-24",
+    "impact": "compatible",
+    "summary": "Added a release gate requiring recorded migration evidence and matching rollback rehearsal evidence per module in shared::release_evidence (#586).",
+    "migration_notes": "",
+    "issue": 586,
+    "pr": null
   }
 ]
