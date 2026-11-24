@@ -265,7 +265,7 @@ pub fn contains_template_injection(raw: &Bytes) -> bool {
         b"{{",
         b"${",
         b"<%=",
-        b"#{"",
+        b"#{",
     ];
     for &p in patterns {
         if contains_subslice_ci(raw, p) {
@@ -735,7 +735,7 @@ pub fn is_forbidden_export_field(field: &Symbol) -> bool {
         || field == &symbol_short!("admin_key")
         || field == &symbol_short!("res_seed")
         || field == &symbol_short!("raw_pii")
-        || field == &symbol_short!("ballot_slt")
+        || field == &symbol_short!("ballot_st")
         || field == &symbol_short!("sign_key")
         || field == &symbol_short!("raw_nonce")
         || field == &symbol_short!("ip_addr")

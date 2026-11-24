@@ -123,6 +123,10 @@ pub mod nft_guard;
 pub mod recurring_payments;
 pub mod registry_pinning;
 pub mod wasm_determinism;
+pub mod oracle_quarantine;
+pub mod treasury_floor;
+pub mod governance_timelock;
+pub mod nft_royalty;
 #[cfg(test)]
 pub mod test_boundary_properties;
 #[cfg(test)]
@@ -304,4 +308,23 @@ pub use registry_pinning::{
 pub use wasm_determinism::{
     evaluate_budget_regression, verify_wasm_determinism, BudgetRegressionVerdict,
     DeterminismGateError, DeterminismReport, ResourceBudget, WasmArtifactFingerprint,
+};
+pub use oracle_quarantine::{
+    compute_deviation_bps, evaluate_price_update, force_quarantine_feed,
+    release_quarantine_override, validate_heartbeat, HeartbeatConfig, OracleQuarantineError,
+    QuarantineConfig, QuarantineEvaluation, QuarantineStatus,
+};
+pub use treasury_floor::{
+    configure_reserve_floor, evaluate_reserve_outflow, get_reserve_surplus,
+    manual_pause_reserve_guard, unpause_reserve_guard, ReserveAutoPauseState, ReserveFloorConfig,
+    TreasuryFloorError,
+};
+pub use governance_timelock::{
+    cancel_queued_timelock, cast_proposal_veto, queue_proposal_timelock,
+    validate_timelock_execution, GovernanceTimelockError, TimelockEntry, TimelockLifecycleStatus,
+    VetoOutcome, VetoRecord,
+};
+pub use nft_royalty::{
+    compute_and_verify_royalty_split, validate_royalty_config, NftRoyaltyError,
+    RoyaltyExecutionPlan, RoyaltySplitRecipient,
 };
