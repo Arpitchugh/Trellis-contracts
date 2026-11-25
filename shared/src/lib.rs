@@ -82,7 +82,6 @@ pub mod rare_failure_fixtures;
 pub mod release_artifacts;
 pub mod release_readiness;
 pub mod replay;
-pub mod reentrancy_guard;
 pub mod resumable_repair;
 pub mod risk_scoring;
 pub mod rollout_guard;
@@ -145,10 +144,6 @@ pub use allowlist::{
     validate_destination as validate_allowlisted_destination,
     validate_url as validate_allowlisted_url, AllowlistError, AllowlistPolicy,
     MAX_ALLOWLIST_ENTRIES, MAX_EXTENSION_LEN, MAX_HOST_LEN,
-};
-pub use reentrancy_guard::{
-    enter_guarded_call, exit_guarded_call, get_call_telemetry, reset_call_telemetry,
-    CallDepthTelemetry, GuardError, GuardToken, MAX_CALL_DEPTH, TOPIC_REENTRANCY_GUARD,
 };
 pub use risk_scoring::{
     assess_and_record, evaluate_risk, get_actor_profile, get_risk_policy, reset_actor_risk,

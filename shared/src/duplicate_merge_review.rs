@@ -478,7 +478,7 @@ mod tests {
         let finalized = finalize_merge(&env, &admin, prop.proposal_id).unwrap();
         assert_eq!(finalized.state, MergeReviewState::Finalized);
 
-        // Attempting to revert a finalized merge MUST fail with InvalidState
+        // Attempting to revert a finalized merge MUST fail with InvalidArgument
         assert_eq!(
             revert_merge(&env, &admin, prop.proposal_id),
             Err(Error::InvalidTransition)

@@ -720,7 +720,7 @@ pub fn is_export_allowlisted_field(field: &Symbol) -> bool {
 }
 
 /// Strictly forbidden fields that must NEVER appear in any export.
-pub fn is_forbidden_export_field(field: &Symbol) -> bool {
+pub fn is_forbidden_export_field(env: &Env, field: &Symbol) -> bool {
     field == &symbol_short!("priv_key")
         || field == &symbol_short!("sec_key")
         || field == &symbol_short!("seed")
@@ -745,7 +745,7 @@ pub fn is_forbidden_export_field(field: &Symbol) -> bool {
 pub fn assert_no_forbidden_fields(fields: &Vec<ExportField>) -> Result<(), SensitiveBoundaryError> {
     for i in 0..fields.len() {
         if let Some(f) = fields.get(i) {
-            if is_forbidden_export_field(&f.name) {
+            if is_forbidden_export_field(fields.env(), &f.name) {
                 return Err(SensitiveBoundaryError::PrivateFieldLeakage);
             }
         }
@@ -794,7 +794,7 @@ pub fn sanitize_export_record(
 
     for i in 0..record.fields.len() {
         if let Some(f) = record.fields.get(i) {
-            if is_export_allowlisted_field(&f.name) && !is_forbidden_export_field(&f.name) {
+            if is_export_allowlisted_field(&f.name) && !is_forbidden_export_field(env, &f.name) {
                 safe_fields.push_back(f);
             } else {
                 purged_count = purged_count.saturating_add(1);
