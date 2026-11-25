@@ -424,11 +424,38 @@
   },
   {
     "version": "unreleased",
-    "date": "2026-11-22",
+    "date": "2026-11-24",
     "impact": "compatible",
-    "summary": "aid-contract: un-hiding a record via set_aid_search_visibility now re-inserts it at its sorted index position instead of appending, so search_aids_cursor no longer skips restored records.",
-    "migration_notes": "Optional: run repair_search_index(admin) once after upgrading to re-sort any discovery index left unsorted by earlier un-hide calls.",
-    "issue": 480,
-    "pr": 598
+    "summary": "Added oracle price feed heartbeat validation and L2 deviation quarantine with auto-recovery and admin override controls in shared::oracle_quarantine (#518).",
+    "migration_notes": "",
+    "issue": 518,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-24",
+    "impact": "compatible",
+    "summary": "Created multi-asset treasury reserve floor and auto-pause guard preventing reserve exhaustion and locking outflows on breach in shared::treasury_floor (#520).",
+    "migration_notes": "",
+    "issue": 520,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-24",
+    "impact": "compatible",
+    "summary": "Implemented governance proposal timelock cancellation and collective admin veto quorum in shared::governance_timelock (#521).",
+    "migration_notes": "",
+    "issue": 521,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-24",
+    "impact": "compatible",
+    "summary": "Added NFT royalty split invariant enforcement across secondary sales guaranteeing exact token conservation and multi-recipient shares in shared::nft_royalty (#522).",
+    "migration_notes": "",
+    "issue": 522,
+    "pr": null
   }
 ]

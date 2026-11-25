@@ -735,8 +735,7 @@ pub fn is_forbidden_export_field(env: &Env, field: &Symbol) -> bool {
         || field == &symbol_short!("admin_key")
         || field == &symbol_short!("res_seed")
         || field == &symbol_short!("raw_pii")
-        // 10 chars: too long for `symbol_short!`, so build a full Symbol.
-        || field == &Symbol::new(env, "ballot_slt")
+        || field == &symbol_short!("ballot_st")
         || field == &symbol_short!("sign_key")
         || field == &symbol_short!("raw_nonce")
         || field == &symbol_short!("ip_addr")
