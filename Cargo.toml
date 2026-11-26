@@ -18,6 +18,7 @@ members = [
     "contracts/signed-audit-receipts",
     "contracts/retention-enforcement",
     "contracts/referral-commission-guard",
+    "contracts/governance-quadratic-voting",
 ]
 
 [workspace.dependencies]
