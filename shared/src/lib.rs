@@ -58,6 +58,7 @@ pub mod lifecycle_events;
 pub mod maintainer_approval;
 pub mod math;
 pub mod migration;
+pub mod migration_snapshot;
 pub mod notification_dedup;
 pub mod operational_metadata;
 pub mod operator_runbook;
@@ -129,6 +130,8 @@ pub mod governance_timelock;
 pub mod nft_royalty;
 #[cfg(test)]
 pub mod test_boundary_properties;
+#[cfg(test)]
+pub mod test_problem_details_taxonomy;
 #[cfg(test)]
 pub mod test_schema_compat;
 // Re-export the most commonly-needed items at crate root for ergonomic use.

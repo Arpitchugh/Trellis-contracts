@@ -1,9 +1,18 @@
 [
   {
     "version": "unreleased",
+    "date": "2026-11-22",
+    "impact": "compatible",
+    "summary": "Added an unauthenticated dependency-aware health endpoint to RegistryContract with authenticated status and dependency reporting, failure counters, and recovery semantics.",
+    "migration_notes": "No migration is required. Existing registry deployments remain compatible; clients may call health after deployment.",
+    "issue": 279,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
     "date": "2026-09-26",
     "impact": "breaking",
-    "summary": "Record schema versioning (V1/V2) added; V1 writes are now rejected — only V2 (with token binding) may be newly written, though V1 reads remain supported indefinitely via migrate_v1_to_v2.",
+    "summary": "Record schema versioning (V1/V2) added; V1 writes are now rejected \u2014 only V2 (with token binding) may be newly written, though V1 reads remain supported indefinitely via migrate_v1_to_v2.",
     "migration_notes": "Any integrator or off-chain indexer still writing the V1 shape (no token binding) must move to V2 before this ships to mainnet. See docs/COMPATIBILITY.md for the full read/write path and the deprecation timeline.",
     "issue": 64,
     "pr": 68
@@ -12,7 +21,7 @@
     "version": "unreleased",
     "date": "2026-09-26",
     "impact": "compatible",
-    "summary": "Added the migration safety framework (dry_run, MigrationJournal, post-checks, rollback strategy) in shared::migration — opt-in tooling for future schema/data migrations, not itself a change to any existing contract's interface.",
+    "summary": "Added the migration safety framework (dry_run, MigrationJournal, post-checks, rollback strategy) in shared::migration \u2014 opt-in tooling for future schema/data migrations, not itself a change to any existing contract's interface.",
     "migration_notes": "",
     "issue": 51,
     "pr": 71
@@ -456,6 +465,42 @@
     "summary": "Added NFT royalty split invariant enforcement across secondary sales guaranteeing exact token conservation and multi-recipient shares in shared::nft_royalty (#522).",
     "migration_notes": "",
     "issue": 522,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-22",
+    "impact": "compatible",
+    "summary": "Added privacy-safe export with field-level authorization and allowlist filtering in shared::export, withholding personal fields for non-owner operational queries without mutating stored state (#581).",
+    "migration_notes": "",
+    "issue": 581,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-22",
+    "impact": "compatible",
+    "summary": "Implemented feature-flag rollout guard with staged canary traffic bucketing, error rate trip thresholds, and emergency rollback verification across all modules (#582).",
+    "migration_notes": "",
+    "issue": 582,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-22",
+    "impact": "compatible",
+    "summary": "Added WCAG 2.1 AA keyboard navigation, roving tabindex, modal focus traps, and async transaction status ARIA live region mapping in shared::accessibility and scripts (#583).",
+    "migration_notes": "",
+    "issue": 583,
+    "pr": null
+  },
+  {
+    "version": "unreleased",
+    "date": "2026-11-22",
+    "impact": "compatible",
+    "summary": "Created contributor diagnostics command and environment invariant validation across toolchain, Soroban SDK pins, Dalek crypto, and storage schema integrity (#584).",
+    "migration_notes": "",
+    "issue": 584,
     "pr": null
   },
   {
